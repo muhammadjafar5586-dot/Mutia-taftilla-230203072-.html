@@ -1,0 +1,458 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Fun Ludo Game</title>
+<style>
+:root{
+  --cell-size:100px;
+  --gap:10px;
+  --font-sans: Inter, Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{
+  font-family:var(--font-sans);
+  background: linear-gradient(180deg,#eef2ff 0%, #f9f9fd 100%);
+  color:#0f172a;
+  display:flex;justify-content:center;align-items:flex-start;
+  padding:20px;
+}
+.container{
+  width:100%;
+  max-width:1200px;
+  display:grid;
+  grid-template-columns:1fr 300px;
+  gap:20px;
+}
+header{
+  grid-column:1/3;
+  display:flex;justify-content:space-between;align-items:center;gap:12px;
+  margin-bottom:12px;
+}
+.title { font-size:24px;font-weight:900;letter-spacing:0.2px; }
+.subtitle { font-size:13px;color:#475569; }
+.board-wrap{
+  background:#fff;
+  padding:16px;
+  border-radius:16px;
+  box-shadow:0 12px 30px rgba(15,20,30,0.08);
+}
+.grid{
+  display:grid;
+  grid-template-columns: repeat(6, var(--cell-size));
+  gap: var(--gap);
+  justify-content:center;
+}
+.cell {
+  width: var(--cell-size);
+  height: var(--cell-size);
+  border-radius:12px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  position:relative;
+  font-weight:500;
+  color:#0f172a;
+  text-align:center;
+  padding:4px;
+  overflow:hidden;
+  font-size:12px;
+  line-height:1.2;
+  transition: transform 0.3s ease, background 0.3s ease;
+  box-shadow:0 4px 12px rgba(10,12,20,0.05);
+}
+.cell.start { background:#d9f7d9; font-weight:900; }
+.cell.finish { background:#ffe9d6; font-weight:900; }
+.cell.question { background:#fff9d6; }
+.cell.goback { background:#ff4d4f; color:#fff; font-weight:800; }
+.cell .question {
+  width:100%;
+  height:100%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:10px;
+  font-weight:500;
+  padding:4px;
+  text-align:center;
+  border-radius:8px;
+  background:transparent;
+  color:#0f172a;
+}
+.cell.goback .question { background:transparent; color:#fff; }
+.token {
+  width:36px;height:36px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  color:#fff;font-weight:800;position:absolute;
+  transform:translate(-50%,-50%);
+  top:50%; left:50%;
+  box-shadow:0 6px 16px rgba(0,0,0,0.25);
+  font-size:14px;
+  pointer-events:none;
+  transition: top 0.3s ease, left 0.3s ease;
+  z-index: 10;
+}
+.token.moving {
+  animation: bounce 0.3s ease infinite alternate;
+}
+@keyframes bounce {
+  from { transform: translate(-50%, -50%) scale(1); }
+  to { transform: translate(-50%, -50%) scale(1.1); }
+}
+.sidebar{
+  background:#fff;padding:16px;border-radius:16px;box-shadow:0 12px 30px rgba(15,20,30,0.08);
+  display:flex;flex-direction:column;gap:12px;
+}
+.select, .btn { padding:10px 14px;border-radius:12px;border:0;font-weight:700;cursor:pointer; }
+.select { background:#f1f5f9; }
+.btn { background:#0f62fe;color:#fff; }
+.btn.secondary { background:#f1f5f9;color:#0f172a; }
+.players-list{display:flex;flex-direction:column;gap:8px}
+.player-row{display:flex;justify-content:space-between;align-items:center;padding:8px;border-radius:8px}
+.dot{width:18px;height:18px;border-radius:50%}
+.small { font-size:13px;color:#475569 }
+.music-control {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: #fff;
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  cursor: pointer;
+  z-index: 100;
+}
+.music-control i {
+  font-size: 24px;
+}
+@media (max-width:980px){ .container{grid-template-columns:1fr} .sidebar{order:2} }
+</style>
+</head>
+<body>
+<div class="container">
+<header>
+  <div>
+    <div class="title">All about everyday life & fun facts</div>
+    <div class="subtitle">Mutia taftilla (230203072)</div>
+  </div>
+  <div style="display:flex;gap:10px;align-items:center">
+    <label class="small">Players:</label>
+    <select id="playerCount" class="select">
+      <option value="2">2 players</option>
+      <option value="3">3 players</option>
+      <option value="4" selected>4 players</option>
+      <option value="5">5 players</option>
+      <option value="6">6 players</option>
+      <option value="7">7 players</option>
+      <option value="8">8 players</option>
+    </select>
+    <button id="startBtn" class="btn">Start Game</button>
+  </div>
+</header>
+<div class="board-wrap">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+    <div style="display:flex;gap:8px;align-items:center">
+      <button id="rollBtn" class="btn" disabled>Roll Dice 🎲 </button>
+      <button id="resetBtn" class="btn secondary">Reset</button>
+    </div>
+    <div style="display:flex;gap:12px;align-items:center">
+      <div class="small">Dice: <span id="dice">-</span></div>
+      <div id="turnDisplay" class="small">Turn: -</div>
+    </div>
+  </div>
+  <div class="grid" id="grid"></div>
+</div>
+<aside class="sidebar">
+  <div style="display:flex;justify-content:space-between;align-items:center">
+    <strong>Players</strong>
+    <small id="status">Idle</small>
+  </div>
+  <div class="players-list" id="playersList"></div>
+  <div>
+    <div class="small" style="margin-bottom:6px"><strong>Aturan singkat</strong></div>
+    <ol style="padding-left:16px;margin:0;font-size:13px;color:#475569">
+      <li>Klik <em>Start Game</em> setelah pilih jumlah pemain.</li>
+      <li>Klik <em>Roll Dice</em> untuk lempar dadu.</li>
+      <li>Token bergerak sesuai angka; <em>Go back</em> otomatis berlaku.</li>
+      <li>Pertanyaan langsung ada di kotak.</li>
+    </ol>
+  </div>
+</aside>
+</div>
+
+<!-- Kontrol Musik -->
+<div class="music-control" id="musicControl">
+  <i>🔊</i>
+</div>
+
+<!-- Suara -->
+<audio id="diceSound" src="-"></audio>
+<audio id="moveSound" src="https://freesound.org/data/previews/176/176501_32441-lq.mp3"></audio>
+<audio id="finishSound" src="https://d.top4top.io/m_35674yep30.mp3"></audio>
+<audio id="gobackSound" src="https://freesound.org/data/previews/423/423649_5121236-lq.mp3"></audio>
+<audio id="diceRollSound" src="https://l.top4top.io/m_356714pim1.mp3"></audio>
+<audio id="backgroundMusic" loop>
+  <source src="https://f.top4top.io/m_35675qwu60.mp3" type="audio/mpeg">
+</audio>
+
+<script>
+const ROWS=4, COLS=6, NUM_CELLS=24;
+const QUESTIONS_MAP={
+0:"Start",
+1:"If you could have any pet, what would you choose?",
+2:"If you could go on vacation anywhere in the world, where would you go?",
+3:"Go back 1",
+4:"What is your favorite activity on the weekend?",
+5:"If you had a superpower, what power would you want?",
+6:"What is your favorite sport at school?",
+7:"What item do you always bring to school?",
+8:"Go back 2",
+9:"If you had a superpower, what power would you want?",
+10:"What snack do you buy most often at the school cafeteria?",
+11:"What is your favorite color and why do you like it?",
+12:"Go back 3",
+13:"If you could change the color of your school uniform, what color would you choose?",
+14:"What song have you been listening to most often lately?",
+15:"If you could only bring three items to a deserted island, what would you bring?",
+16:"If you could go on a picnic anywhere in your city, where would you go?",
+17:"Go back 4",
+18:"If you could switch places with someone for a day, who would you choose?",
+19:"What is your favorite drink on a hot day?",
+20:"If you could plant a tree in your yard, what tree would you choose?",
+21:"Go back 5",
+22:"What is your favorite color and why do you like it?",
+23:"Finish"
+};
+const specialCells={0:'start',3:'goback',8:'goback',12:'goback',17:'goback',21:'goback',23:'finish'};
+for(let i=1;i<=22;i++){if(!(i in specialCells)) specialCells[i]='question';}
+const TOKEN_COLORS=['#ff4d4f','#1f6feb','#16a34a','#fbbf24','#7c3aed','#fb923c','#ff7ab6','#374151'];
+let players=[],currentTurn=0,animating=false;
+const cellElements=[];
+const grid=document.getElementById('grid');
+const playerCountSelect=document.getElementById('playerCount');
+const startBtn=document.getElementById('startBtn');
+const rollBtn=document.getElementById('rollBtn');
+const resetBtn=document.getElementById('resetBtn');
+const diceEl=document.getElementById('dice');
+const turnDisplay=document.getElementById('turnDisplay');
+const playersListEl=document.getElementById('playersList');
+const statusEl=document.getElementById('status');
+const musicControl = document.getElementById('musicControl');
+
+// Audio elements
+const diceSound=document.getElementById('diceSound');
+const moveSound=document.getElementById('moveSound');
+const finishSound=document.getElementById('finishSound');
+const gobackSound=document.getElementById('gobackSound');
+const diceRollSound=document.getElementById('diceRollSound');
+const backgroundMusic=document.getElementById('backgroundMusic');
+
+// Kontrol musik
+let musicPlaying = false;
+musicControl.addEventListener('click', () => {
+  if (musicPlaying) {
+    backgroundMusic.pause();
+    musicControl.innerHTML = '<i>🔇</i>';
+    musicPlaying = false;
+  } else {
+    backgroundMusic.play().catch(e => console.log("Autoplay prevented:", e));
+    musicControl.innerHTML = '<i>🔊</i>';
+    musicPlaying = true;
+  }
+});
+
+// Coba putar musik latar otomatis (dengan penanganan error)
+window.addEventListener('click', () => {
+  if (!musicPlaying) {
+    backgroundMusic.play().then(() => {
+      musicPlaying = true;
+      musicControl.innerHTML = '<i>🔊</i>';
+    }).catch(e => console.log("Autoplay prevented:", e));
+  }
+});
+
+/* Build Grid */
+(function buildGrid(){
+  const matrix=Array.from({length:ROWS},()=>Array(COLS).fill(null));
+  let idx=0;
+  for(let r=0;r<ROWS;r++){
+    if(r%2===0){for(let c=0;c<COLS;c++) matrix[r][c]=idx++;} 
+    else{for(let c=COLS-1;c>=0;c--) matrix[r][c]=idx++;}
+  }
+  for(let r=0;r<ROWS;r++){
+    for(let c=0;c<COLS;c++){
+      const pathIndex=matrix[r][c];
+      const type=specialCells[pathIndex];
+      if(!type) continue;
+      const wrapper=document.createElement('div');
+      wrapper.className='cell-wrapper';
+      const cell=document.createElement('div');
+      cell.className='cell '+type;
+      cell.dataset.index=pathIndex;
+      const q=document.createElement('div');
+      q.className='question';
+      q.textContent=QUESTIONS_MAP[pathIndex]||'';
+      wrapper.appendChild(cell);
+      cell.appendChild(q);
+      grid.appendChild(wrapper);
+      cellElements[pathIndex]={wrapper,cell,q};
+    }
+  }
+})();
+
+/* Players & Tokens */
+function initPlayers(count){
+  players=[];
+  for(let i=0;i<count;i++){players.push({name:`Player ${i+1}`,color:TOKEN_COLORS[i],pos:0,finished:false});}
+  currentTurn=0; renderPlayersList(); drawTokens();
+  statusEl.textContent='Ready'; rollBtn.disabled=false; diceEl.textContent='-';
+  turnDisplay.textContent=`Turn: ${players[currentTurn].name} ${getTurnEmoji(currentTurn)}`;
+}
+function renderPlayersList(){
+  playersListEl.innerHTML='';
+  players.forEach((p,idx)=>{
+    const row=document.createElement('div');
+    row.className='player-row';
+    row.style.border='1px solid rgba(0,0,0,0.04)';
+    row.innerHTML=`<div style="display:flex;gap:10px;align-items:center"><div class="dot" style="background:${p.color}"></div><div>${p.name}</div></div><div>${p.finished? '✅':'pos: '+p.pos}</div>`;
+    if(idx===currentTurn) row.style.background='linear-gradient(90deg, rgba(255,255,255,0.7), rgba(0,0,0,0.02))';
+    playersListEl.appendChild(row);
+  });
+}
+function getTurnEmoji(idx){ return ['🔴','🔵','🟢','🟡','🟣','🟠','🌸','⚫'][idx]||''; }
+function drawTokens(){
+  document.querySelectorAll('.token').forEach(t=>t.remove());
+  const buckets={};
+  players.forEach((p,i)=>{const key=p.pos;if(!buckets[key]) buckets[key]=[];buckets[key].push({player:p,idx:i});});
+  Object.keys(buckets).forEach(key=>{
+    const arr=buckets[key]; const pathIndex=parseInt(key); const ce=cellElements[pathIndex]; if(!ce) return; const parent=ce.cell;
+    const places=arr.length;
+    arr.forEach((item,k)=>{
+      const tok=document.createElement('div'); tok.className='token'; tok.style.background=item.player.color; tok.textContent=item.idx+1;
+      if(places===1){ tok.style.left='50%'; tok.style.top='50%'; } 
+      else{
+        const r=18; const angle=(360/places)*k; const rad=angle*Math.PI/180;
+        const cellPx=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--cell-size'))||100;
+        const leftPct=50+(r*Math.cos(rad))/cellPx*100;
+        const topPct=50+(r*Math.sin(rad))/cellPx*100;
+        tok.style.left=`${leftPct}%`; tok.style.top=`${topPct}%`;
+      }
+      parent.appendChild(tok);
+    });
+  });
+}
+
+/* Game Logic */
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+async function movePlayerSteps(playerIndex, steps){
+  const p=players[playerIndex];
+  
+  // Add moving animation to current player's token
+  const currentTokens = document.querySelectorAll('.token');
+  currentTokens.forEach(token => {
+    if (token.textContent == playerIndex+1) {
+      token.classList.add('moving');
+    }
+  });
+  
+  for(let s=0;s<steps;s++){
+    if(p.pos>=NUM_CELLS-1) break;
+    p.pos++; drawTokens(); renderPlayersList(); 
+    
+    // Mainkan suara pergerakan token
+    moveSound.currentTime = 0;
+    moveSound.play();
+    
+    await sleep(350);
+  }
+  
+  // Remove moving animation
+  currentTokens.forEach(token => {
+    if (token.textContent == playerIndex+1) {
+      token.classList.remove('moving');
+    }
+  });
+  
+  const landed=p.pos; const type=specialCells[landed]||'';
+  if(type==='goback'){ 
+    await sleep(200); 
+    gobackSound.currentTime = 0;
+    gobackSound.play();
+    p.pos=Math.max(0,p.pos-1); 
+    drawTokens(); 
+    renderPlayersList(); 
+    
+    // Mainkan suara pergerakan mundur
+    moveSound.currentTime = 0;
+    moveSound.play();
+  }
+  else if(type==='finish'){ 
+    p.finished=true; 
+    finishSound.currentTime = 0;
+    finishSound.play(); 
+    alert(`${p.name} reached FINISH! 🎉`);
+  }
+  renderPlayersList();
+}
+function nextActivePlayer(fromIndex){
+  let next=(fromIndex+1)%players.length;
+  for(let i=0;i<players.length;i++){if(!players[next].finished) return next; next=(next+1)%players.length;}
+  return next;
+}
+
+/* Controls */
+startBtn.addEventListener('click',()=>initPlayers(parseInt(playerCountSelect.value,10)));
+rollBtn.addEventListener('click',async()=>{
+  if(animating) return; if(players.length===0){ alert('Klik Start Game dulu.'); return;}
+  if(players[currentTurn].finished){currentTurn=nextActivePlayer(currentTurn); renderPlayersList();
+    turnDisplay.textContent=`Turn: ${players[currentTurn].name} ${getTurnEmoji(currentTurn)}`; return;}
+  animating=true; diceEl.textContent='...';
+  
+  // Mainkan suara putaran dadu
+  diceRollSound.currentTime = 0;
+  diceRollSound.play();
+  
+  for(let i=0;i<8;i++){
+    const tempRoll=Math.floor(Math.random()*6)+1; 
+    diceEl.textContent=tempRoll; 
+    
+    // Mainkan suara dadu bergulir
+    diceSound.currentTime = 0;
+    diceSound.play();
+    
+    await sleep(50);
+  }
+  
+  const roll=Math.floor(Math.random()*6)+1; 
+  diceEl.textContent=roll; 
+  await movePlayerSteps(currentTurn,roll);
+  
+  const active=players.filter(p=>!p.finished);
+  if(active.length<=1){ 
+    alert('Permainan selesai!'); 
+    animating=false; 
+    rollBtn.disabled=true; 
+    return;
+  }
+  
+  currentTurn=nextActivePlayer(currentTurn);
+  turnDisplay.textContent=`Turn: ${players[currentTurn].name} ${getTurnEmoji(currentTurn)}`;
+  renderPlayersList(); 
+  animating=false;
+});
+resetBtn.addEventListener('click',()=>{
+  players.forEach(p=>{ p.pos=0; p.finished=false;});
+  if(players.length>0){currentTurn=0; turnDisplay.textContent=`Turn: ${players[currentTurn].name} ${getTurnEmoji(currentTurn)}`;}
+  else{turnDisplay.textContent=`Turn: -`;}
+  diceEl.textContent='-'; drawTokens(); renderPlayersList();
+  rollBtn.disabled=players.length===0; statusEl.textContent='Ready';
+});
+(function initialSetup(){ initPlayers(parseInt(playerCountSelect.value,10)); })();
+</script>
+</body>
+</html>
